@@ -1,0 +1,65 @@
+consider a scenario of:
+
+nsd (unsigned) -> ODS -> knot signed
+
+* need to have span events for notify
+* need span for
+  * SOA check
+  * xfr
+  * zone sign
+  * zone write
+  * ...
+what would a span look like
+
+
+MoM auth
+-> make an edit to the zone (for icann this is zonedit)
+  -> load the zone into memory (bind)
+  -> check if the SOA is newer then the in memory zone
+    -> Load new one from disk
+      -> send notify to downstreams
+
+* Downstream: unisgned view on signer (NSD)
+-> recive a notify
+-> check notify is newer
+  -> XFR new zone
+   -> Load zone into memory
+     -> notify donwstreams
+
+* Downstream (ODS: signer)
+-> recive a notify
+-> check notify is newer
+  -> XFR new zone
+    -> Load zone into memory
+    -> Load ZSK
+      -> sign zone
+        -> write zone to disk
+        -> notify downstream
+
+* Downstream: signed view on signer (Bind)
+-> recive a notify
+-> check notify is newer
+  -> XFR new zone
+   -> Load zone into memory
+     -> notify downstream
+
+* Public auth servers/NS set: (nsd/knot)
+-> recive a notify
+-> check notify is newer
+  -> XFR new zone
+   -> Load zone into memory
+     -> notify downstream
+
+* We would need one RFC to specify adding tracing information to the above events:
+  * this will mostly be re-doing the opentelementery spec  but more focused on dns
+  * Define a format to send to an OLDP collector
+  * talk about logging formats
+
+We would also need an RFC to define how to pass messages between distributed systems.  For this we need to
+* At te very least we need a way to pass a transaction id to be used as the parent id.
+* We may also need to send the span id
+* The best option may be to use an OPT record on the notify and xfr messages
+
+* What other transactions might benefit from distributed tracing
+** client queries, creating a span covering the query lifetime i.e. from client -> stub -> cache -> auth
+** CDS/CDNSKEY
